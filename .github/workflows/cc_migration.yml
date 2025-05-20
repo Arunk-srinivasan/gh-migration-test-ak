@@ -1,0 +1,44 @@
+name: BB to GH Migration Workflow
+
+on:
+  push:
+    branches:
+      - test
+
+jobs:
+  bb-migration:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+        env:
+          AWS_REGION: ap-southeast-2
+
+      - name: Execute migration script
+        run: |
+          mkdir .ssh && cd .ssh && echo "$SSH_PRIVATE_KEY" > id_rsa && chmod 600 id_rsa
+          echo "$SSH_CONFIG" > config && chmod 600 config
+          echo "$HOST_KEY" > known_hosts && chmod 600 known_hosts && cd ..
+          git remote add codecommit "$CODECOMMIT_URL"
+          ssh -v git-codecommit.us-east-2.amazonaws.com
+          git clone "ssh://$SSH_KEY_ID@git-codecommit.ap-southeast-2.amazonaws.com/v1/repos/$repo.git"
+          #bash scripts/cc_2_gh_migration.sh
+        env:
+          CC_USERNAME: ${{ secrets.CC_USERNAME }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+          CC_TOKEN: ${{ secrets.CC_TOKEN }}
+          SSH_KEY_ID: ${{ secrets.SSH_KEY_ID }}
+          HOST_KEY: ${{ secrets.HOST_KEY }}
+          SSH_CONFIG: ${{ secrets.SSH_CONFIG }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          CODECOMMIT_URL: ${{ secrets.CODECOMMIT_URL }}
